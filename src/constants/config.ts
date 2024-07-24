@@ -11,11 +11,6 @@ export default {
     port:
       (isTestEnvironment ? Bun.env.TEST_APP_PORT : Bun.env.APP_PORT) || '3000',
   },
-  sms: {
-    multiTexterApi: 'https://app.multitexter.com/v2/app/sendsms',
-    multiTexterApiKey: Bun.env.MULTITEXTER_KEY!,
-    senderName: 'pineApp',
-  },
   email: {
     elasticemail_key: Bun.env.ELASTICMAIL_API_KEY,
     sender: 'ikem@ikem.dev',

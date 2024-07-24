@@ -11,7 +11,6 @@ export default (app: Elysia) =>
       schema: t.Object({
         id: t.String(),
         role: t.String(),
-        rank: t.String(),
       }),
       exp: config.auth.jwt.expiresIn,
     }),

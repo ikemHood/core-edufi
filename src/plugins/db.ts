@@ -1,7 +1,5 @@
 import mongoose from 'mongoose';
 import config from '../constants/config';
-import courseModel from '../modules/courses/model';
-import userModel from '../modules/users/model';
 
 export default async function () {
   try {

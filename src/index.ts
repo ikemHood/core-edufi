@@ -2,12 +2,21 @@ import { Elysia } from 'elysia';
 import config from './constants/config';
 import db from './plugins/db';
 import plugins from './plugins';
+import authRoutes,{ userRoutes } from './modules/users/routes';
+import courseRoutes from './modules/courses/routes';
 
 const app = new Elysia();
 db();
 app
   .use(plugins)
-  .get('/', () => 'Hello Elysia')
+  .guard({ detail: { tags: ['App'] } })
+  .get('/', () => ({
+    name: config.app.name,
+    version: config.app.version
+  }))
+  .use(authRoutes)
+  .use(userRoutes)
+  .use(courseRoutes)
   .listen(config.app.port, () => {
     console.log(`Environment: ${config.app.env}`);
     console.log(
