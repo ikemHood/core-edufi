@@ -15,6 +15,11 @@ export default {
     elasticemail_key: Bun.env.ELASTICMAIL_API_KEY,
     sender: 'ikem@ikem.dev',
   },
+  docs: {
+    swagger: {
+      path: '/swagger'
+    }
+  },
   db: {
     mongodb: Bun.env.MONGO_URI!,
   },

@@ -9,5 +9,5 @@ export default (app: Elysia) =>
         .use(courseApiSchema)
         .use(auth)
         .post('/api/v1/courses', controller.createCourse, { body: "createCourse" })
-        .get('/api/v1/courses', controller.fetchCourses, { body: 'fetchCourses' })
-        .get('/api/v1/courses/me', controller.myCourses, { body: 'fetchCourses' })
+        .get('/api/v1/courses', controller.fetchCourses, { query: 'fetchCourses' })
+        .get('/api/v1/courses/me', controller.myCourses, { query: 'fetchCourses' })
