@@ -1,57 +1,57 @@
-import { t, Elysia } from "elysia";
+import { t, Elysia } from 'elysia';
 
 export default new Elysia().model({
-    register: t.Object({
-        body: t.Object({
-            name: t.String(),
-            role: t.Optional(t.String()),
-            email: t.String({ format: 'email' }),
-            password: t.String({ maxLength: 64 }),
-        })
+  register: t.Object({
+    body: t.Object({
+      name: t.String(),
+      role: t.Optional(t.String()),
+      email: t.String({ format: 'email' }),
+      password: t.String({ maxLength: 64 }),
     }),
+  }),
 
-    login: t.Object({
-        body: t.Object({
-            email: t.String({ format: 'email' }),
-            password: t.String({ maxLength: 64 }),
-        })
+  login: t.Object({
+    body: t.Object({
+      email: t.String({ format: 'email' }),
+      password: t.String({ maxLength: 64 }),
     }),
+  }),
 
-    forgetPass: t.Object({
-        params: t.Object({
-            email: t.String({ format: 'email' }),
-        })
+  forgetPass: t.Object({
+    params: t.Object({
+      email: t.String({ format: 'email' }),
     }),
+  }),
 
-    validateOTP: t.Object({
-        params: t.Object({
-            email: t.String({ format: 'email' }),
-        }),
-        body: t.Object({
-            otp: t.String({ minLength: 6, maxLength: 6 }),
-        })
+  validateOTP: t.Object({
+    params: t.Object({
+      email: t.String({ format: 'email' }),
     }),
-
-    resetPass: t.Object({
-        params: t.Object({
-            email: t.String({ format: 'email' }),
-        }),
-        body: t.Object({
-            token: t.String({ minLength: 6, maxLength: 6 }),
-            password: t.String({ maxLength: 64 }),
-            confirmPassword: t.String({ maxLength: 64 }),
-        })
+    body: t.Object({
+      otp: t.String({ minLength: 6, maxLength: 6 }),
     }),
+  }),
 
-    addToWatchlist: t.Object({
-        params: t.Object({
-            id: t.String(),
-        }),
+  resetPass: t.Object({
+    params: t.Object({
+      email: t.String({ format: 'email' }),
     }),
+    body: t.Object({
+      token: t.String({ minLength: 6, maxLength: 6 }),
+      password: t.String({ maxLength: 64 }),
+      confirmPassword: t.String({ maxLength: 64 }),
+    }),
+  }),
 
-    addToCart: t.Object({
-        params: t.Object({
-            id: t.String(),
-        }),
-    })
-})
+  addToWatchlist: t.Object({
+    params: t.Object({
+      id: t.String(),
+    }),
+  }),
+
+  addToCart: t.Object({
+    params: t.Object({
+      id: t.String(),
+    }),
+  }),
+});

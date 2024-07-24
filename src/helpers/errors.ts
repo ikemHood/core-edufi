@@ -1,4 +1,4 @@
-import { ResponseStatus } from "../constants/codes";
+import { ResponseStatus } from '../constants/codes';
 
 export class ConflictError extends Error {
   public status: number;

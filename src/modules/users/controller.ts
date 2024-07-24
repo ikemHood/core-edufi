@@ -1,7 +1,7 @@
-import { Context } from 'elysia'
-import userServices from './services'
-import { ContextWithJWT, ContextWithUser, SuccessResponse } from '../../types'
-import { IUser, UpdateUserQuery } from './model'
+import { Context } from 'elysia';
+import userServices from './services';
+import { ContextWithJWT, ContextWithUser, SuccessResponse } from '../../types';
+import { IUser, UpdateUserQuery } from './model';
 import config from '../../constants/config';
 import { randomToken } from '../../utils/randoms';
 import { UnauthorizedError } from '../../helpers/errors';
@@ -10,253 +10,274 @@ import mongoose from 'mongoose';
 import elasticMailSender, { genEmail } from '../../utils/mailer';
 
 class userControllers {
-    //post /api/v1/auth/register
-    async register(ctx: Context): Promise<SuccessResponse<{}>> {
-        const payload = ctx.body as IUser;
+  //post /api/v1/auth/register
+  async register(ctx: Context): Promise<SuccessResponse<{}>> {
+    const payload = ctx.body as IUser;
 
-        await userServices.createUser(payload)
-        return {
-            message: 'Signup successful!'
-        }
+    await userServices.createUser(payload);
+    return {
+      message: 'Signup successful!',
+    };
+  }
+
+  async isUsernameAvailable() {}
+
+  //post /api/v1/auth/login
+  async login(
+    ctx: ContextWithJWT,
+  ): Promise<SuccessResponse<{ token: string }>> {
+    const payload = ctx.body as { email: string; password: string };
+
+    const user = await userServices.findOneUser({ email: payload.email });
+
+    const isValid = await user.comparePassword(payload.password);
+    if (!isValid) {
+      throw new Error('Invalid Email or Password!');
+    }
+    const token = await ctx.jwt.sign({ id: user.id, role: user.role });
+
+    ctx.cookie.authorization.set({
+      value: token,
+      httpOnly: true,
+      priority: 'high',
+      maxAge: Date.now() + config.auth.cookie.expires,
+    });
+
+    return {
+      message: 'User logged in successfully!',
+      data: { token },
+    };
+  }
+
+  //get /api/v1/auth/password/:email/forget
+  async forgetPass(ctx: ContextWithJWT): Promise<SuccessResponse<string>> {
+    const params = ctx.params as { email: string };
+    const user = await userServices.findOneUser({ email: params.email });
+
+    const otp = randomToken(6);
+    const msg = genEmail(otp);
+
+    // Done /////TODO: Send email to user
+    const smsSent = await elasticMailSender({
+      email: user.email,
+      title: 'EDU BTCFI: Your one time password',
+      html: msg,
+      text: msg,
+    });
+
+    if (!smsSent) {
+      throw new Error('Failed to send OTP');
     }
 
-    async isUsernameAvailable() {
+    const hasher = new Bun.CryptoHasher('sha256');
+    const hash = hasher.update(otp).digest('hex');
 
+    //save otp if msg was sent
+    user.otp = hash; //Done /////TODO:  otp should somehow be hashed:
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    return {
+      message: 'reset OTP sent',
+    };
+  }
+
+  //post /api/v1/auth/password/:email/validate
+  async validateOTP(
+    ctx: ContextWithJWT,
+  ): Promise<SuccessResponse<{ token: string }>> {
+    const params = ctx.params as { email: string };
+    const payload = ctx.body as { otp: string };
+
+    const user = await userServices.findOneUser({ email: params.email });
+
+    if (user.otpExpires && new Date() > user.otpExpires) {
+      throw new Error('OTP has expired');
     }
 
-    //post /api/v1/auth/login
-    async login(ctx: ContextWithJWT): Promise<SuccessResponse<{ token: string }>> {
-        const payload = ctx.body as { email: string; password: string };
+    const hasher = new Bun.CryptoHasher('sha256');
+    const hash = hasher.update(payload.otp).digest('hex');
 
-        const user = await userServices.findOneUser({ email: payload.email });
+    const validOtp = user.otp === hash; //Done TODO: if otp is hashed, this would change
 
-        const isValid = await user.comparePassword(payload.password);
-        if (!isValid) {
-            throw new Error("Invalid Email or Password!")
-        }
-        const token = await ctx.jwt.sign({ id: user.id, role: user.role });
-
-        ctx.cookie.authorization.set({
-            value: token,
-            httpOnly: true,
-            priority: 'high',
-            maxAge: Date.now() + config.auth.cookie.expires
-        });
-
-        return {
-            message: 'User logged in successfully!',
-            data: { token }
-        };
+    if (!validOtp) {
+      throw new Error('Invalid OTP!');
     }
 
-    //get /api/v1/auth/password/:email/forget
-    async forgetPass(ctx: ContextWithJWT): Promise<SuccessResponse<string>> {
-        const params = ctx.params as { email: string };
-        const user = await userServices.findOneUser({ email: params.email });
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
 
-        const otp = randomToken(6);
-        const msg = genEmail(otp);
+    const token = await ctx.jwt.sign({ id: user.id, role: user.role });
 
-        // Done /////TODO: Send email to user
-        const smsSent = await elasticMailSender({ email: user.email, title: "EDU BTCFI: Your one time password", html: msg, text: msg });
+    return {
+      message: 'success',
+      data: { token },
+    };
+  }
 
-        if (!smsSent) {
-            throw new Error('Failed to send OTP');
-        }
+  //post /api/v1/auth/password/:email/reset
+  async resetPass(ctx: ContextWithJWT): Promise<SuccessResponse<string>> {
+    const params = ctx.params as { email: string };
+    const payload = ctx.body as {
+      password: string;
+      confirmPassword: string;
+      token: string;
+    };
 
-        const hasher = new Bun.CryptoHasher('sha256');
-        const hash = hasher.update(otp).digest('hex');
-
-        //save otp if msg was sent
-        user.otp = hash; //Done /////TODO:  otp should somehow be hashed:
-        user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-        await user.save();
-
-        return {
-            message: 'reset OTP sent'
-        };
+    if (payload.password != payload.confirmPassword) {
+      throw new Error('password and confirmPAssword must match');
     }
 
-    //post /api/v1/auth/password/:email/validate
-    async validateOTP(ctx: ContextWithJWT): Promise<SuccessResponse<{ token: string }>> {
-        const params = ctx.params as { email: string };
-        const payload = ctx.body as { otp: string };
+    const userFromToken = await ctx.jwt.verify(payload.token);
 
-        const user = await userServices.findOneUser({ email: params.email });
-
-        if (user.otpExpires && new Date() > user.otpExpires) {
-            throw new Error('OTP has expired');
-        }
-
-        const hasher = new Bun.CryptoHasher('sha256');
-        const hash = hasher.update(payload.otp).digest('hex');
-
-        const validOtp = user.otp === hash; //Done TODO: if otp is hashed, this would change
-
-        if (!validOtp) {
-            throw new Error('Invalid OTP!');
-        }
-
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        await user.save();
-
-        const token = await ctx.jwt.sign({ id: user.id, role: user.role });
-
-        return {
-            message: 'success',
-            data: { token }
-        };
+    if (!userFromToken) {
+      throw new UnauthorizedError('Invalid token!');
     }
 
-    //post /api/v1/auth/password/:email/reset
-    async resetPass(ctx: ContextWithJWT): Promise<SuccessResponse<string>> {
-        const params = ctx.params as { email: string };
-        const payload = ctx.body as { password: string; confirmPassword: string; token: string };
+    const user = await userServices.findOneUser({ _id: userFromToken.id });
 
-        if (payload.password != payload.confirmPassword) {
-            throw new Error("password and confirmPAssword must match")
-        }
-
-        const userFromToken = await ctx.jwt.verify(payload.token);
-
-        if (!userFromToken) {
-            throw new UnauthorizedError('Invalid token!');
-        }
-
-        const user = await userServices.findOneUser({ _id: userFromToken.id });
-
-        if (user.email !== params.email) {
-            throw new UnauthorizedError('Invalid token!');
-        }
-
-        user.password = payload.password;
-        await user.save();
-
-        return {
-            message: 'Password reset successfully. Please Login.'
-        };
+    if (user.email !== params.email) {
+      throw new UnauthorizedError('Invalid token!');
     }
 
-    //get /api/v1/cart/:id
-    async addToCart(ctx: ContextWithUser): Promise<SuccessResponse<{ cart: unknown }>> {
-        const userId = ctx.user.id;
-        const { id } = ctx.params as { id: string };
+    user.password = payload.password;
+    await user.save();
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error('Invalid course ID');
-        }
+    return {
+      message: 'Password reset successfully. Please Login.',
+    };
+  }
 
-        const updateQuery: UpdateUserQuery = { $addToSet: { cart: id } };
+  //get /api/v1/cart/:id
+  async addToCart(
+    ctx: ContextWithUser,
+  ): Promise<SuccessResponse<{ cart: unknown }>> {
+    const userId = ctx.user.id;
+    const { id } = ctx.params as { id: string };
 
-        const updatedUser = await userServices.updateUser(
-            { _id: userId },
-            updateQuery
-        );
-
-        await updatedUser.populate('cart')
-
-        return {
-            message: 'Course added to cart successfully',
-            data: {
-                cart: updatedUser.cart
-            }
-        };
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new Error('Invalid course ID');
     }
 
-    //get /api/v1/cart
-    async getCart(ctx: ContextWithUser): Promise<SuccessResponse<{ cart: unknown }>> {
-        const userId = ctx.user.id
-        const user = await userServices.findOneUser({ _id: userId })
+    const updateQuery: UpdateUserQuery = { $addToSet: { cart: id } };
 
-        await user.populate('cart')
+    const updatedUser = await userServices.updateUser(
+      { _id: userId },
+      updateQuery,
+    );
 
-        return {
-            message: messages.FETCHED,
-            data: {
-                cart: user.cart
-            }
-        }
+    await updatedUser.populate('cart');
+
+    return {
+      message: 'Course added to cart successfully',
+      data: {
+        cart: updatedUser.cart,
+      },
+    };
+  }
+
+  //get /api/v1/cart
+  async getCart(
+    ctx: ContextWithUser,
+  ): Promise<SuccessResponse<{ cart: unknown }>> {
+    const userId = ctx.user.id;
+    const user = await userServices.findOneUser({ _id: userId });
+
+    await user.populate('cart');
+
+    return {
+      message: messages.FETCHED,
+      data: {
+        cart: user.cart,
+      },
+    };
+  }
+
+  //get /api/v1/watchlist/:id
+  async addToWatchlist(
+    ctx: ContextWithUser,
+  ): Promise<SuccessResponse<{ watchlist: unknown }>> {
+    const userId = ctx.user.id;
+    const { id } = ctx.params as { id: string };
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new Error('Invalid course ID');
     }
 
-    //get /api/v1/watchlist/:id
-    async addToWatchlist(ctx: ContextWithUser): Promise<SuccessResponse<{ watchlist: unknown }>> {
-        const userId = ctx.user.id;
-        const { id } = ctx.params as { id: string };
+    const updateQuery: UpdateUserQuery = { $addToSet: { watchlist: id } };
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error('Invalid course ID');
-        }
+    const updatedUser = await userServices.updateUser(
+      { _id: userId },
+      updateQuery,
+    );
 
-        const updateQuery: UpdateUserQuery = { $addToSet: { watchlist: id } };
+    await updatedUser.populate('watchlist');
 
-        const updatedUser = await userServices.updateUser(
-            { _id: userId },
-            updateQuery
-        );
+    return {
+      message: 'Course added to cart successfully',
+      data: {
+        watchlist: updatedUser.watchlist,
+      },
+    };
+  }
 
-        await updatedUser.populate('watchlist')
+  //get /api/v1/watchlist
+  async getWatchlist(
+    ctx: ContextWithUser,
+  ): Promise<SuccessResponse<{ watchlist: unknown }>> {
+    const userId = ctx.user.id;
+    const user = await userServices.findOneUser({ _id: userId });
 
-        return {
-            message: 'Course added to cart successfully',
-            data: {
-                watchlist: updatedUser.watchlist
-            }
-        };
-    }
+    await user.populate('watchlist');
 
-    //get /api/v1/watchlist
-    async getWatchlist(ctx: ContextWithUser): Promise<SuccessResponse<{ watchlist: unknown }>> {
-        const userId = ctx.user.id
-        const user = await userServices.findOneUser({ _id: userId })
+    return {
+      message: messages.FETCHED,
+      data: {
+        watchlist: user.watchlist,
+      },
+    };
+  }
 
-        await user.populate('watchlist')
+  //get /api/v1/me
+  async me(ctx: ContextWithUser): Promise<SuccessResponse<{ user: IUser }>> {
+    const userId = ctx.user.id;
 
-        return {
-            message: messages.FETCHED,
-            data: {
-                watchlist: user.watchlist
-            }
-        }
-    }
+    const user = await userServices.findOneUser({ _id: userId });
 
-    //get /api/v1/me
-    async me(ctx: ContextWithUser): Promise<SuccessResponse<{ user: IUser }>> {
-        const userId = ctx.user.id
+    return {
+      message: messages.FETCHED,
+      data: {
+        user,
+      },
+    };
+  }
 
-        const user = await userServices.findOneUser({ _id: userId })
+  //post /api/v1/me
+  async updateProfile(
+    ctx: ContextWithUser,
+  ): Promise<SuccessResponse<{ user: IUser }>> {
+    const userId = ctx.user.id;
+    const payload = ctx.body as Partial<IUser>;
 
-        return {
-            message: messages.FETCHED,
-            data: {
-                user
-            }
-        }
-    }
+    const user = await userServices.updateUser({ _id: userId }, payload);
 
-    //post /api/v1/me
-    async updateProfile(ctx: ContextWithUser): Promise<SuccessResponse<{ user: IUser }>> {
-        const userId = ctx.user.id
-        const payload = ctx.body as Partial<IUser>;
+    return {
+      message: messages.FETCHED,
+      data: {
+        user,
+      },
+    };
+  }
 
-        const user = await userServices.updateUser({ _id: userId }, payload)
+  // {@path "/api/v1/logout"}
+  async logout(ctx: ContextWithUser): Promise<SuccessResponse<string>> {
+    ctx.cookie.authorization.remove();
 
-        return {
-            message: messages.FETCHED,
-            data: {
-                user
-            }
-        }
-    }
-
-    // {@path "/api/v1/logout"}
-    async logout(ctx: ContextWithUser): Promise<SuccessResponse<string>> {
-        ctx.cookie.authorization.remove();
-
-        return {
-            message: 'User logged out successfully!'
-        };
-    }
+    return {
+      message: 'User logged out successfully!',
+    };
+  }
 }
 
-export default new userControllers()
+export default new userControllers();

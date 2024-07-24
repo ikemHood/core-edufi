@@ -3,7 +3,7 @@ import config from '../constants/config';
 import courseModel from '../modules/courses/model';
 import userModel from '../modules/users/model';
 
-export default async function() {
+export default async function () {
   try {
     const conn = await mongoose.connect(config.db.mongodb, { autoIndex: true });
     mongoose.set('strictQuery', false);
@@ -13,5 +13,3 @@ export default async function() {
     console.log('Error: Failed to connect MongoDB:', err);
   }
 }
-
-
