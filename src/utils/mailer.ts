@@ -8,45 +8,45 @@ const apikey = client.authentications['apikey'];
 apikey.apiKey = config.email.elasticemail_key;
 
 export default async function elasticMailSender({
-  email,
-  title,
-  text,
-  html,
+   email,
+   title,
+   text,
+   html,
 }: {
-  email: string;
-  title: string;
-  text: string;
-  html: string;
+   email: string;
+   title: string;
+   text: string;
+   html: string;
 }) {
-  const api = await new ElasticEmail.EmailsApi();
-  const mail = ElasticEmail.EmailMessageData.constructFromObject({
-    Recipients: [new ElasticEmail.EmailRecipient(email)],
-    Content: {
-      Body: [
-        ElasticEmail.BodyPart.constructFromObject({
-          ContentType: 'HTML',
-          Content: html,
-        }),
-        ElasticEmail.BodyPart.constructFromObject({
-          ContentType: 'PlainText',
-          Content: text,
-        }),
-      ],
-      Subject: title,
-      From: SENDER_EMAIL,
-    },
-  });
+   const api = await new ElasticEmail.EmailsApi();
+   const mail = ElasticEmail.EmailMessageData.constructFromObject({
+      Recipients: [new ElasticEmail.EmailRecipient(email)],
+      Content: {
+         Body: [
+            ElasticEmail.BodyPart.constructFromObject({
+               ContentType: 'HTML',
+               Content: html,
+            }),
+            ElasticEmail.BodyPart.constructFromObject({
+               ContentType: 'PlainText',
+               Content: text,
+            }),
+         ],
+         Subject: title,
+         From: SENDER_EMAIL,
+      },
+   });
 
-  return await new Promise((resolve, reject) => {
-    api.emailsPost(mail, async function (error: any, data: unknown) {
-      if (error) reject(error);
-      resolve(data);
-    });
-  });
+   return await new Promise((resolve, reject) => {
+      api.emailsPost(mail, async function (error: any, data: unknown) {
+         if (error) reject(error);
+         resolve(data);
+      });
+   });
 }
 
 export function genEmail(otp: string) {
-  return `
+   return `
       <!DOCTYPE html>
       <html lang="en">
       <head>

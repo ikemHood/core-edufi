@@ -5,7 +5,7 @@
  * @param message - The error message to throw if the condition is false.
  */
 export default function Require(condition: boolean, message: string): void {
-  if (!condition) {
-    throw new Error(message);
-  }
+   if (!condition) {
+      throw new Error(message);
+   }
 }
