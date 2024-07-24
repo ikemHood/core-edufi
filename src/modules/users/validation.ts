@@ -54,4 +54,14 @@ export default new Elysia().model({
       id: t.String(),
     }),
   }),
+
+  updateProfile: t.Object({
+    name: t.Optional(t.String()),
+    bio: t.Optional(t.String()),
+    role: t.Optional(t.String()),
+    username: t.Optional(t.String()),
+    phone_number: t.Optional(t.String()),
+    wallet_address: t.Optional(t.String()),
+    interest: t.Optional(t.Array(t.String())),
+  }),
 });

@@ -10,6 +10,7 @@
     "@elasticemail/elasticemail-client": "^4.0.23",
     "@elysiajs/cors": "^1.0.2",
     "@elysiajs/jwt": "^1.0.2",
+    "@elysiajs/swagger": "^1.1.0",
     "elysia": "latest",
     "mongoose": "^8.4.5",
     "yoctocolors": "^2.1.1"
