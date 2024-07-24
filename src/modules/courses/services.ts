@@ -27,6 +27,7 @@ class coursesService {
         if (search) {
             filter.$or = [
                 { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
                 { 'creator.name': { $regex: search, $options: 'i' } }
             ];
         }
@@ -45,10 +46,11 @@ class coursesService {
         if (search) {
             filter.$or = [
                 { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
                 { 'creator.name': { $regex: search, $options: 'i' } }
             ];
         }
-        
+
         return await coursesModel.countDocuments(filter)
     }
 

@@ -5,7 +5,7 @@ const courseSchema = new Schema(
         name: { type: String, required: true, index: true },
         price: { type: String, required: true },
         image: { type: String, required: true },
-        description: { type: String, required: true },
+        description: { type: String, required: true, index: true },
         lessons: [{ type: mongoose.Types.ObjectId, ref: "Lessons"}],
         tags: [{ type: String, default: [] }],
         creator: {type: mongoose.Types.ObjectId, ref: "Users", required: true}
@@ -19,7 +19,6 @@ const courseSchema = new Schema(
 export interface ICourse extends Document {
     name: string;
     price: string;
-    deleted: boolean;
     image: string;
     description: string;
     tags?: string[];
